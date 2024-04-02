@@ -1,1 +1,1 @@
-export const ChronicleKey = 'ChronicleKey';
+export const ChronicleKey = "ChronicleKey";

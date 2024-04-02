@@ -1,12 +1,21 @@
-import { Entity } from '@subql/types';
-import assert from 'assert';
-import { Parachain } from '../types/models/Parachain';
-import { Crowdloan } from '../types/models/Crowdloan';
-import { CrowdloanSequence } from '../types/models/CrowdloanSequence';
-import { fetchCrowdloan, fetchParachain, getParachainId, parseNumber, parseBigInt } from '../utils';
-import { CrowdloanReturn, CrowdloanStatus } from '../types';
+import { Entity } from "@subql/types";
+import assert from "assert";
+import { Parachain } from "../types/models/Parachain";
+import { Crowdloan } from "../types/models/Crowdloan";
+import { CrowdloanSequence } from "../types/models/CrowdloanSequence";
+import {
+  fetchCrowdloan,
+  fetchParachain,
+  getParachainId,
+  parseNumber,
+  parseBigInt,
+} from "../utils";
+import { CrowdloanReturn, CrowdloanStatus } from "../types";
 
-export const save = async <T extends Entity>(colName: string, entity: T): Promise<T> => {
+export const save = async <T extends Entity>(
+  colName: string,
+  entity: T,
+): Promise<T> => {
   const { id } = entity;
   assert(id != null, `Invalid entity id: ${id}`);
   await store.set(colName, id, entity).catch((err) => {
@@ -16,14 +25,16 @@ export const save = async <T extends Entity>(colName: string, entity: T): Promis
   return entity;
 };
 
-export const get = async <T extends Entity>(colName: string, id: string): Promise<T | null> =>
-  store.get(colName, id) as Promise<T | null>;
+export const get = async <T extends Entity>(
+  colName: string,
+  id: string,
+): Promise<T | null> => store.get(colName, id) as Promise<T | null>;
 
 export const upsert = async <T extends Entity>(
   colName: string,
   id: string,
   updater: Record<string, any>,
-  updateFn?: (entry?: Entity) => Omit<T, 'save'>
+  updateFn?: (entry?: Entity) => Omit<T, "save">,
 ): Promise<T> => {
   const entry = await get(colName, id);
   const updatedItem = entry
@@ -31,15 +42,17 @@ export const upsert = async <T extends Entity>(
       ? updateFn(entry)
       : { ...entry, ...updater, id }
     : updateFn
-    ? updateFn()
-    : { ...updater, id };
+      ? updateFn()
+      : { ...updater, id };
 
   logger.debug(`UpsertItem: ${JSON.stringify(updatedItem, null, 2)}`);
   return store
     .set(colName, id, updatedItem)
     .then(() => updatedItem as T)
     .catch((err) => {
-      logger.error(`Upsert entity ${colName} ${JSON.stringify(updatedItem, null, 2)} failed, ${err.toString()}`);
+      logger.error(
+        `Upsert entity ${colName} ${JSON.stringify(updatedItem, null, 2)} failed, ${err.toString()}`,
+      );
       throw err;
     });
 };
@@ -48,19 +61,40 @@ export const ensureParachain = async (paraId: number): Promise<Parachain> => {
   logger.info(`Fetch parachain by ${paraId}`);
   const { manager, deposit } = await fetchParachain(paraId);
   const parachainId = `${paraId}-${manager}`;
-  return upsert('Parachain', parachainId, { id: parachainId, paraId, manager, deposit, deregistered: false });
+  return upsert("Parachain", parachainId, {
+    id: parachainId,
+    paraId,
+    manager,
+    deposit,
+    deregistered: false,
+  });
 };
 
-export const ensureFund = async (paraId: number, modifier?: Record<string, any>): Promise<Crowdloan> => {
+export const ensureFund = async (
+  paraId: number,
+  modifier?: Record<string, any>,
+): Promise<Crowdloan> => {
   const fund = await fetchCrowdloan(paraId);
   const parachainId = await getParachainId(paraId);
   logger.info(`Retrieved parachainId: ${parachainId} for paraId: ${paraId}`);
   const fundId = await getLatestCrowdloanId(parachainId);
-  const { cap, end, trieIndex, raised, lastContribution, firstPeriod, lastPeriod, deposit, verifier, ...rest } =
-    fund || ({} as CrowdloanReturn);
-  logger.info(`Fund detail: ${JSON.stringify(fund, null, 2)} - cap: ${cap} - raised: ${raised}`);
+  const {
+    cap,
+    end,
+    trieIndex,
+    raised,
+    lastContribution,
+    firstPeriod,
+    lastPeriod,
+    deposit,
+    verifier,
+    ...rest
+  } = fund || ({} as CrowdloanReturn);
+  logger.info(
+    `Fund detail: ${JSON.stringify(fund, null, 2)} - cap: ${cap} - raised: ${raised}`,
+  );
 
-  return upsert<Crowdloan>('Crowdloan', fundId, null, (cur: Crowdloan) => {
+  return upsert<Crowdloan>("Crowdloan", fundId, null, (cur: Crowdloan) => {
     return !cur
       ? {
           id: fundId,
@@ -75,7 +109,7 @@ export const ensureFund = async (paraId: number, modifier?: Record<string, any>)
           lockExpiredBlock: end,
           isFinished: false,
           verifier: verifier?.toString() || undefined,
-          ...modifier
+          ...modifier,
         }
       : {
           id: fundId,
@@ -85,9 +119,14 @@ export const ensureFund = async (paraId: number, modifier?: Record<string, any>)
               ? (parseBigInt(cur.raised) as unknown as bigint)
               : (parseNumber(raised) as unknown as bigint),
           cap:
-            cap === undefined ? (parseBigInt(cur.cap) as unknown as bigint) : (parseNumber(cap) as unknown as bigint),
-          deposit: deposit === undefined ? (parseBigInt(cur.deposit) as unknown as bigint) : parseNumber(deposit) as unknown as bigint,
-          ...modifier
+            cap === undefined
+              ? (parseBigInt(cur.cap) as unknown as bigint)
+              : (parseNumber(cap) as unknown as bigint),
+          deposit:
+            deposit === undefined
+              ? (parseBigInt(cur.deposit) as unknown as bigint)
+              : (parseNumber(deposit) as unknown as bigint),
+          ...modifier,
         };
   });
 };
@@ -97,7 +136,9 @@ export const getLatestCrowdloanId = async (parachainId: string) => {
   const curBlockNum = await api.query.system.number();
   if (seq) {
     const crowdloanIdx = seq.curIndex;
-    const isReCreateCrowdloan = await getIsReCreateCrowdloan(`${parachainId}-${crowdloanIdx}`);
+    const isReCreateCrowdloan = await getIsReCreateCrowdloan(
+      `${parachainId}-${crowdloanIdx}`,
+    );
     let curIdex = crowdloanIdx;
     if (isReCreateCrowdloan) {
       curIdex = crowdloanIdx + 1;
@@ -114,13 +155,15 @@ export const getLatestCrowdloanId = async (parachainId: string) => {
     id: parachainId,
     curIndex: 0,
     createdAt: new Date(),
-    blockNum: curBlockNum
+    blockNum: curBlockNum,
   }).save();
   logger.info(`Crowdloan: ${parachainId} fundId: 0`);
   return `${parachainId}-0`;
 };
 
-export const getIsReCreateCrowdloan = async (fundId: string): Promise<Boolean> => {
+export const getIsReCreateCrowdloan = async (
+  fundId: string,
+): Promise<Boolean> => {
   const fund = await Crowdloan.get(fundId);
   const isReCreateCrowdloan = !!(
     fund?.dissolvedBlock &&
