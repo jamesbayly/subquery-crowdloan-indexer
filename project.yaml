@@ -1,5 +1,5 @@
 specVersion: 1.0.0
-description: Allow users to query crowdloan and auction data from Kusama/Polkadot
+name: "polkadot-crowdloan-indexer"
 version: 0.0.1
 runner:
   node:
@@ -8,6 +8,8 @@ runner:
   query:
     name: "@subql/query"
     version: "*"
+description: "Allow users to query crowdloan and auction data from Kusama/Polkadot"
+repository: "https://github.com/interlay/subquery-crowdloan-indexer"
 schema:
   file: ./schema.graphql
 network:
@@ -15,7 +17,8 @@ network:
   endpoint:
     ["wss://kusama.api.onfinality.io/public-ws", "wss://kusama-rpc.polkadot.io"]
 dataSources:
-  - kind: substrate/Runtime
+  - name: KusamaRuntime
+    kind: substrate/Runtime
     filter:
       specName: kusama
     startBlock: 7828000
@@ -76,7 +79,8 @@ dataSources:
           filter:
             module: auctions
             method: BidAccepted
-  - kind: substrate/Runtime
+  - name: PolkadotRuntime
+    kind: substrate/Runtime
     filter:
       specName: polkadot
     startBlock: 7553930 # the first register
