@@ -4,10 +4,12 @@
   "description": "Allow users to query crowdloan and auction data from Kusama/Polkadot",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -b",
-    "prepack": "rm -rf dist && npm build",
-    "test": "jest",
-    "codegen": "./node_modules/.bin/subql codegen"
+    "build": "subql build",
+    "codegen": "subql codegen",
+    "start:docker": "docker-compose pull && docker-compose up --remove-orphans",
+    "dev": "subql codegen && subql build && docker-compose pull && docker-compose up --remove-orphans",
+    "prepack": "rm -rf dist && npm run build",
+    "test": "subql build && subql-node test"
   },
   "homepage": "https://github.com/subquery/subql-starter",
   "repository": "github:subquery/subql-starter",
@@ -19,16 +21,13 @@
   "author": "Cherry",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@polkadot/api": "^5.7.1",
+    "@polkadot/api": "^10",
+    "@subql/cli": "latest",
+    "@subql/testing": "latest",
     "@subql/types": "latest",
-    "typescript": "^4.1.3",
-    "@subql/cli": "latest"
+    "typescript": "^5.2.2"
   },
   "resolutions": {
-    "@polkadot/api": "^5.7.1",
-    "@subql/node": "^0.21.1"
-  },
-  "dependencies": {
-    "@subql/node": "^0.21.1"
+    "ipfs-unixfs": "6.0.6"
   }
 }
